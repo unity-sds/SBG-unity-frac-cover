@@ -15,8 +15,6 @@ git clone https://github.com/EnSpec/SpectralUnmixing.git -b v0.2.1-sister
 specun_dir="$app_dir/SpectralUnmixing"
 
 # Install Julia and then install Julia dependencies
-#conda create -f environment.yaml -n spectral-unmixing -y -c conda-forge julia=1.7 python=3.8 gdal=3.6.0 pandas=2.0.1 awscli
-#conda create -f environment.yaml -n spectral-unmixing -y -c conda-forge awscli
 conda create -n spectral-unmixing -y -c conda-forge julia=1.7 python=3.8 gdal=3.6.0 pandas=2.0.1 awscli
 source activate spectral-unmixing
 python -m pip install awscli
@@ -32,18 +30,20 @@ git switch develop
 poetry install 
 
 # Download snow climatology dataset
-aws s3 cp s3://sister-ops-registry/packages/LIN10A1_snow_climatology_13day.tif .
+#aws s3 cp s3://sister-ops-registry/packages/LIN10A1_snow_climatology_13day.tif .
 
 git clone https://github.com/EnSpec/hytools.git
 cd hytools
 pip install .
 cd ..
 
+echo 'Spectral Unmixing repo is here: ' $specun_dir
 pushd $specun_dir
 export JULIA_SSL_CA_ROOTS_PATH=""
 julia -e 'using Pkg; Pkg.activate("."); Pkg.add(path="https://github.com/kmsquire/ArgParse2.jl"); Pkg.instantiate()'
-export JULIA_PROJECT=$specun_dir
+julia -e 'using Pkg; Pkg.activate("."); Pkg.precompile()'
+export JULIA_PROJECT=`pwd`
+echo $JULIA_PROJECT
 popd
-
 cd $app_dir
 

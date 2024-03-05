@@ -31,6 +31,7 @@ from unity_sds_client.resources.collection import Collection
 from datetime import datetime, timezone
 from unity_sds_client.resources.dataset import Dataset
 from unity_sds_client.resources.data_file import DataFile
+import spectral.io.envi as envi
 
 
 def find_nearest_day(day, subset_days):
@@ -48,7 +49,7 @@ def get_frcov_basename(corfl_basename, crid):
     tokens = tmp_basename.split("_")[:-1] + [str(crid)]
     return "_".join(tokens)
 
-
+'''
 def generate_stac_metadata(basename, description, in_meta):
 
     out_meta = {}
@@ -66,7 +67,7 @@ def generate_stac_metadata(basename, description, in_meta):
         "cover_percentile_counts": in_meta["cover_percentile_counts"]
     }
     return out_meta
-
+'''
 
 def create_item(metadata, assets):
     item = pystac.Item(
@@ -99,12 +100,15 @@ refl_scale = sys.argv[4] #"1.0"
 crid = sys.argv[5] #"001"
 experimental_flag = sys.argv[6] #"True"
 
+output_collection_name = 'example-L2-Fractional-Cover'
+
 # # Import Files from STAC Item Collection
 # 
 # Load filenames from the stage_in STAC item collection file
 inp_collection = Collection.from_stac(input_stac_collection_file)
 data_filenames = inp_collection.data_locations()
 
+print(f"Data Files (JSON): {data_filenames}")
 
 # Define paths and variables
 input_path = os.path.dirname(input_stac_collection_file)
@@ -114,7 +118,11 @@ if not os.path.exists(f"{input_path}/work"):
     print("Making work directory")
     os.mkdir(f"{input_path}/work")
         
-        
+if experimental_flag:
+    disclaimer = "(DISCLAIMER: THIS DATA IS EXPERIMENTAL AND NOT INTENDED FOR SCIENTIFIC USE) "
+else:
+    disclaimer = ""
+
 sister_frcov_dir = os.path.abspath(os.path.dirname(__file__))
 specun_dir = os.path.join(os.path.dirname(sister_frcov_dir), "SpectralUnmixing")
 
@@ -129,6 +137,7 @@ frcov_img_path = f"{input_path}/work/{frcov_basename}"
 shutil.copyfile(f"{corfl_file_path}/{corfl_basename}.bin", corfl_img_path)
 shutil.copyfile(f"{corfl_file_path}/{corfl_basename}.hdr", corfl_hdr_path)
 
+
 #Load reflectance im
 rfl = ht.HyTools()
 rfl.read_file(corfl_img_path)
@@ -137,7 +146,7 @@ line_data = (rfl.get_band(0) == rfl.no_data).sum(axis=1)
 start_line = 1+np.argwhere(line_data != rfl.columns)[0][0]
 end_line = rfl.lines - np.argwhere(np.flip(line_data) != rfl.columns)[0][0] -1
 
-endmember_lib_path = f"{sister_frcov_dir}/data/veg_soil_water_snow_endmembers.csv"
+endmember_lib_path = f"{input_path}/data/veg_soil_water_snow_endmembers.csv"
 endmembers = pd.read_csv(endmember_lib_path)
 
 no_snow = endmembers[endmembers['class'] != 'snow']
@@ -193,8 +202,8 @@ for endmember_file in endmember_files:
     cmd = ["julia"]
 
     # Add parallelization if n_cores > 1
-    if run_config["inputs"]["n_cores"] > 1:
-        cmd += ["-p", str(run_config["inputs"]["n_cores"])]
+    if int(n_cores) > 1:
+        cmd += ["-p", n_cores]
 
     cmd += [
         unmix_exe,
@@ -214,30 +223,38 @@ for endmember_file in endmember_files:
     print("Running unmix.jl command: " + " ".join(cmd))
     subprocess.run(" ".join(cmd), shell=True)
 
-
+## Unity (BLEE): Modified due to lack of files:
 no_snow_frcov_file = f'{frcov_img_path}_no_snow_fractional_cover'
-no_snow_gdal = gdal.Open(no_snow_frcov_file)
-no_snow_frcov  = no_snow_gdal.ReadAsArray()
-no_snow_frcov[no_snow_frcov==rfl.no_data] = np.nan
+if os.path.isfile(no_snow_frcov_file):
+    no_snow_gdal = gdal.Open(no_snow_frcov_file)
+    no_snow_frcov  = no_snow_gdal.ReadAsArray()
+    no_snow_frcov[no_snow_frcov==rfl.no_data] = np.nan
+else:
+    print(f'WARNING: Following file could not be found: {no_snow_frcov_file}.')
 
 filter_frcov = np.zeros((rfl.lines,rfl.columns,4))
 
+no_water_frcov_file = f'{frcov_img_path}_no_water_fractional_cover'
 if snow_present:
-    no_water_frcov_file = f'{frcov_img_path}_no_water_fractional_cover'
-    no_water_gdal = gdal.Open(no_water_frcov_file)
-    no_water_frcov  = no_water_gdal.ReadAsArray()
-    no_water_frcov[no_water_frcov==rfl.no_data] = np.nan
+    if os.path.isfile(no_water_frcov_file):
+        no_water_gdal = gdal.Open(no_water_frcov_file)
+        no_water_frcov  = no_water_gdal.ReadAsArray()
+        no_water_frcov[no_water_frcov==rfl.no_data] = np.nan
 
-    water = (rfl.ndi(550,850) > 0) & (rfl.get_wave(900) < .15)
+        water = (rfl.ndi(550,850) > 0) & (rfl.get_wave(900) < .15)
 
-    filter_frcov[water,:3] =no_snow_frcov[:3,water].T
-    filter_frcov[~water,0] =no_water_frcov[0,~water].T
-    filter_frcov[~water,1] =no_water_frcov[1,~water].T
-    filter_frcov[~water,3] =no_water_frcov[2,~water].T
+        filter_frcov[water,:3] =no_snow_frcov[:3,water].T
+        filter_frcov[~water,0] =no_water_frcov[0,~water].T
+        filter_frcov[~water,1] =no_water_frcov[1,~water].T
+        filter_frcov[~water,3] =no_water_frcov[2,~water].T
+        
+    else: 
+        print(f'WARNING: Following file could not be found: {no_water_frcov_file}.')
 
-else:
+elif os.path.isfile(no_snow_frcov_file):
     filter_frcov[:,:,:3]  = np.moveaxis(no_snow_frcov[:3],0,-1)
-
+##
+    
 filter_frcov[~rfl.mask['no_data']] = -9999
 filter_frcov_file = f'{frcov_img_path}_fractional_cover'
 band_names = ['soil','vegetation','water','snow_ice']
@@ -278,7 +295,7 @@ im = Image.fromarray(rgb)
 im.save(frcov_ql_path)
 
 #Convert to COG
-temp_file =  'work/temp_frcover.tif'
+temp_file =  f'{input_path}/work/temp_frcover.tif'
 out_file =  f"{output_stac_catalog_dir}/{frcov_basename}.tif"
 
 print(f"Creating COG {out_file}")
@@ -319,19 +336,20 @@ del tiff, driver
 os.system(f"gdaladdo -minsize 900 {temp_file}")
 os.system(f"gdal_translate {temp_file} {out_file} -co COMPRESS=LZW -co TILED=YES -co COPY_SRC_OVERVIEWS=YES")
 
-
-
 # If experimental, prefix filenames with "EXPERIMENTAL-"
-if experimental:
+if experimental_flag:
     for file in glob.glob(f"{output_stac_catalog_dir}/SISTER*"):
         shutil.move(file, f"{output_stac_catalog_dir}/EXPERIMENTAL-{os.path.basename(file)}")
 
 # Update the path variables if now experimental
 frcov_file = glob.glob(f"{output_stac_catalog_dir}/*{crid}.tif")[0]
-out_runconfig = glob.glob(f"{output_stac_catalog_dir}/*{crid}.runconfig.json")[0]
+#out_runconfig = glob.glob(f"{output_stac_catalog_dir}/*{crid}.runconfig.json")[0]
 log_path = glob.glob(f"{output_stac_catalog_dir}/*{crid}.log")[0]
 frcov_basename = os.path.basename(frcov_file)[:-4]
 
+
+'''
+## Removed for Unity. Is this needed? 
 # Generate STAC
 catalog = pystac.Catalog(id=frcov_basename,
                          description=f'{disclaimer}This catalog contains the output data products of the SISTER '
@@ -351,7 +369,7 @@ for tif_file in tif_files:
     if os.path.basename(tif_file) == f"{frcov_basename}.tif":
         png_file = tif_file.replace(".tif", ".png")
         assets["browse"] = f"./{os.path.basename(png_file)}"
-        assets["runconfig"] = f"./{os.path.basename(out_runconfig)}"
+        #assets["runconfig"] = f"./{os.path.basename(out_runconfig)}"
         if os.path.exists(log_path):
             assets["log"] = f"./{os.path.basename(log_path)}"
     item = create_item(metadata, assets)
@@ -372,3 +390,51 @@ for item in catalog.get_items():
         shutil.move(f"{output_stac_catalog_dir}/{fname}", f"{output_stac_catalog_dir}/{frcov_basename}/{item.id}/{fname}")
     with open(f"{output_stac_catalog_dir}/{frcov_basename}/{item.id}/{item.id}.met.json", mode="w"):
         pass
+'''   
+
+## Create stage-out item catalog
+
+#Uncertain about this part. What is supposed to get sent out to STAC? 
+from datetime import datetime, timezone
+
+# Create a collection
+out_collection = Collection(output_collection_name)
+
+# Add output file(s) to the dataset
+file = glob.glob(f"{output_stac_catalog_dir}/*{crid}*")
+
+if file:   
+    start_time = dt.datetime.strptime(run_config["metadata"]['start_datetime'], "%Y-%m-%dt%H:%M:%Sz")
+    end_time = dt.datetime.strptime(run_config["metadata"]['end_datetime'], "%Y-%m-%dt%H:%M:%Sz")
+    name = os.path.splitext(os.path.basename(file[0]))[0]
+    description = f"{disclaimer}This catalog contains the output data products of the SISTER fractional cover PGE, including a fractional cover cloud-optimized GeoTIFF. Execution artifacts including the runconfig file and execution log file are included with the fractional cover data."
+
+    dataset = Dataset(
+        name=name,
+        collection_id=out_collection.collection_id, 
+        start_time=start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        end_time=end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        creation_time=datetime.utcnow().replace(tzinfo=timezone.utc).isoformat(),
+        )
+
+    for file in glob.glob(f"{output_stac_catalog_dir}/*{crid}*"):  
+
+        if file.endswith(".bin"):
+            dataset.add_data_file(DataFile("binary", file, ["data"]))
+        elif file.endswith(".png"):
+            dataset.add_data_file(DataFile("image/png", file, ["browse"]))
+        elif file.endswith(".tif"):
+            dataset.add_data_file(DataFile("image/tif", file, ["browse"]))
+        elif file.endswith(".hdr"):
+            dataset.add_data_file(DataFile("header", file, ["data"]))
+        else:
+            dataset.add_data_file(DataFile(None, file, ["metadata"]))
+
+    dataset.add_data_file(DataFile("text/json", output_stac_catalog_dir + '/' +  name +'.json', ["metadata"]))
+    dataset.add_property("Description", description)
+
+# Add the dataset to the collection
+out_collection._datasets.append(dataset)
+
+Collection.to_stac(out_collection, output_stac_catalog_dir)
+
