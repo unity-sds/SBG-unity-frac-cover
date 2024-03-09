@@ -97,10 +97,10 @@ input_stac_collection_file = sys.argv[1] #'/unity/ads/input_collections/SBG-L2-F
 output_stac_catalog_dir    = sys.argv[2] #'/unity/ads/outputs/SBG-L2-FRAC_COVER/'                    # type: stage-out
 n_cores = sys.argv[3] #"1"
 refl_scale = sys.argv[4] #"1.0"
-crid = sys.argv[5] #"001"
-experimental_flag = sys.argv[6] #"True"
-
-output_collection_name = 'example-L2-Fractional-Cover'
+normalization = sys.argv[5] #"none"
+crid = sys.argv[6] #"001"
+experimental_flag = sys.argv[7] #"True"
+output_collection_name = sys.argv[8] #'SBG-L2-Fractional-Cover'
 
 # # Import Files from STAC Item Collection
 # 
@@ -422,9 +422,9 @@ if file:
         if file.endswith(".bin"):
             dataset.add_data_file(DataFile("binary", file, ["data"]))
         elif file.endswith(".png"):
-            dataset.add_data_file(DataFile("image/png", file, ["browse"]))
+            dataset.add_data_file(DataFile("image/png", file, ["data"]))
         elif file.endswith(".tif"):
-            dataset.add_data_file(DataFile("image/tif", file, ["browse"]))
+            dataset.add_data_file(DataFile("image/tif", file, ["data"]))
         elif file.endswith(".hdr"):
             dataset.add_data_file(DataFile("header", file, ["data"]))
         else:
