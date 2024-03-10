@@ -25,10 +25,17 @@ WORKDIR /app/SpectralUnmixing
 RUN export JULIA_SSL_CA_ROOTS_PATH=""
 RUN julia -e 'using Pkg; Pkg.activate("."); Pkg.add(path="https://github.com/kmsquire/ArgParse2.jl"); Pkg.instantiate()'
 RUN julia -e 'using Pkg; Pkg.activate("."); Pkg.precompile()'
-RUN export JULIA_PROJECT="/app/SpectralUnmixing"
+ENV JULIA_PROJECT="/app/SpectralUnmixing"
 
 # Get Fractional Cover
 WORKDIR /app
-RUN git clone https://github.com/unity-sds/SBG-unity-frac-cover.git; cd SBG-unity-frac-cover; pip install -e .
+RUN git clone https://github.com/unity-sds/SBG-unity-frac-cover.git
+WORKDIR /app/SBG-unity-frac-cover/outputs/SBG-L2-FRAC_COVER
+WORKDIR /app/SBG-unity-frac-cover/
 
-CMD ["python", "/app/SBG-unity-frac-cover/process.py", "/home/leebrian/test_Docker/SBG-L2A_CORFL/catalog.json", "/home/leebrian/test_Docker/outputs/SBG-L2-FRAC_COVER/", "1", "1.0", "001", "True"]
+COPY data .
+
+COPY SBG-L2A_CORFL .
+
+
+CMD ["python", "process.py", "catalog.json", "/app/SBG-unity-frac-cover/outputs/SBG-L2-FRAC_COVER/", "1", "1.0", "none", "001", "True", "SBG-L2-Fractional-Cover"]

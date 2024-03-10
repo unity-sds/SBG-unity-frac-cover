@@ -205,13 +205,13 @@ $graph:
         run: stage_out.cwl
     
   - class: CommandLineTool
-    id: "unity-fractional-cover"
-    label: "emit fractional cover"
+    id: "sbg-unity-fractional-cover"
+    label: "sbg fractional cover"
     cwlVersion: v1.2
     
     requirements:
       - class: DockerRequirement
-        dockerPull: "gangl/unity-fractional-cover:"
+        dockerPull: "leebrian0731/sbg-unity-fractional-cover:"
     
     
     arguments:
@@ -256,4 +256,4 @@ $graph:
           glob: $(runtime.outdir)
         type: Directory
     
-    baseCommand: ["python", "/app/process.py"]
+    baseCommand: ["python", "process.py"]
