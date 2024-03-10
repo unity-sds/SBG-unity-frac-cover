@@ -12,11 +12,7 @@ RUN python -m pip install awscli; pip install Pillow; pip install pystac==1.8.4;
 RUN git clone https://github.com/EnSpec/SpectralUnmixing.git -b v0.2.1-sister
 
 # Get Unity-Py 
-RUN pip install poetry
-RUN git clone https://github.com/unity-sds/unity-py.git
-WORKDIR /app/unity-py
-RUN git switch develop
-RUN poetry install 
+RUN pip install git+https://github.com/unity-sds/unity-py.git
 
 # Get hytools
 WORKDIR /app
@@ -29,7 +25,7 @@ WORKDIR /app/SpectralUnmixing
 RUN export JULIA_SSL_CA_ROOTS_PATH=""
 RUN julia -e 'using Pkg; Pkg.activate("."); Pkg.add(path="https://github.com/kmsquire/ArgParse2.jl"); Pkg.instantiate()'
 RUN julia -e 'using Pkg; Pkg.activate("."); Pkg.precompile()'
-RUN export JULIA_PROJECT="/home/leebrian/test_Docker/SpectralUnmixing"
+RUN export JULIA_PROJECT="/app/SpectralUnmixing"
 
 # Get Fractional Cover
 WORKDIR /app

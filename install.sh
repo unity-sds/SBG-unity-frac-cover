@@ -23,11 +23,7 @@ pip install pystac==1.8.4
 pip install spectral==0.23.1
 
 #needed for unity-sds
-pip install poetry
-git clone https://github.com/unity-sds/unity-py.git
-cd unity-py
-git switch develop
-poetry install 
+pip install git+https://github.com/unity-sds/unity-py.git
 
 # Download snow climatology dataset
 #aws s3 cp s3://sister-ops-registry/packages/LIN10A1_snow_climatology_13day.tif .
@@ -42,8 +38,7 @@ pushd $specun_dir
 export JULIA_SSL_CA_ROOTS_PATH=""
 julia -e 'using Pkg; Pkg.activate("."); Pkg.add(path="https://github.com/kmsquire/ArgParse2.jl"); Pkg.instantiate()'
 julia -e 'using Pkg; Pkg.activate("."); Pkg.precompile()'
-export JULIA_PROJECT=`pwd`
-echo $JULIA_PROJECT
+export JULIA_PROJECT=$specun_dir
 popd
 cd $app_dir
 

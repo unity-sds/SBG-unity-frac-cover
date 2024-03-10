@@ -111,27 +111,27 @@ data_filenames = inp_collection.data_locations()
 print(f"Data Files (JSON): {data_filenames}")
 
 # Define paths and variables
-input_path = os.path.dirname(input_stac_collection_file)
-
+from pathlib import Path
+sister_frcov_dir = os.path.abspath(os.path.dirname(__file__))
 # Make work dir
-if not os.path.exists(f"{input_path}/work"):
+if not os.path.exists(f"{sister_frcov_dir}/work"):
     print("Making work directory")
-    os.mkdir(f"{input_path}/work")
+    os.mkdir(f"{sister_frcov_dir}/work")
         
 if experimental_flag:
     disclaimer = "(DISCLAIMER: THIS DATA IS EXPERIMENTAL AND NOT INTENDED FOR SCIENTIFIC USE) "
 else:
     disclaimer = ""
 
-sister_frcov_dir = os.path.abspath(os.path.dirname(__file__))
+
 specun_dir = os.path.join(os.path.dirname(sister_frcov_dir), "SpectralUnmixing")
 
 corfl_file_path = os.path.dirname(data_filenames[0])
 corfl_basename = Path(data_filenames[0]).stem
 frcov_basename = get_frcov_basename(corfl_basename, crid)
-corfl_img_path = f"{input_path}/work/{corfl_basename}"
-corfl_hdr_path = f"{input_path}/work/{corfl_basename}.hdr"
-frcov_img_path = f"{input_path}/work/{frcov_basename}"
+corfl_img_path = f"{sister_frcov_dir}/work/{corfl_basename}"
+corfl_hdr_path = f"{sister_frcov_dir}/work/{corfl_basename}.hdr"
+frcov_img_path = f"{sister_frcov_dir}/work/{frcov_basename}"
 
 # Copy the input files into the work directory (don't use .bin)
 shutil.copyfile(f"{corfl_file_path}/{corfl_basename}.bin", corfl_img_path)
@@ -146,20 +146,20 @@ line_data = (rfl.get_band(0) == rfl.no_data).sum(axis=1)
 start_line = 1+np.argwhere(line_data != rfl.columns)[0][0]
 end_line = rfl.lines - np.argwhere(np.flip(line_data) != rfl.columns)[0][0] -1
 
-endmember_lib_path = f"{input_path}/data/veg_soil_water_snow_endmembers.csv"
+endmember_lib_path = f"{sister_frcov_dir}/data/veg_soil_water_snow_endmembers.csv"
 endmembers = pd.read_csv(endmember_lib_path)
 
 no_snow = endmembers[endmembers['class'] != 'snow']
-no_snow.to_csv('endmembers_no_snow.csv',index = False)
+no_snow.to_csv(f'{sister_frcov_dir}/work/endmembers_no_snow.csv',index = False)
 
 no_water = endmembers[endmembers['class'] != 'water']
-no_water.to_csv('endmembers_no_water.csv',index = False)
+no_water.to_csv(f'{sister_frcov_dir}/work/endmembers_no_water.csv',index = False)
 
 # Build command and run unmix.jl
 unmix_exe = f"{specun_dir}/unmix.jl"
 log_path = f"{output_stac_catalog_dir}/{frcov_basename}.log"
 
-snow_clim_file = f'{os.path.dirname(input_stac_collection_file)}/LIN10A1_snow_climatology_13day.tif'
+snow_clim_file = f'{sister_frcov_dir}/data/LIN10A1_snow_climatology_13day.tif'
 snow_clim = gdal.Open(snow_clim_file)
 snow = snow_clim.GetRasterBand(1)
 snow_days = np.arange(1,365,13)
@@ -167,7 +167,7 @@ snow_days = np.arange(1,365,13)
 ulx,pixel_size,_,uly,_,_ = snow_clim.GetGeoTransform()
 
 run_config = {}
-stac_json_path = os.path.join(input_path, f"{corfl_basename}.json")
+stac_json_path = os.path.join(corfl_file_path, f"{corfl_basename}.json")
 with open(stac_json_path, "r") as f:
     stac_item = json.load(f)
 run_config["metadata"] = stac_item["properties"]
@@ -208,7 +208,7 @@ for endmember_file in endmember_files:
     cmd += [
         unmix_exe,
         corfl_img_path,
-        f'endmembers_{endmember_file}.csv',
+        f'{sister_frcov_dir}/work/endmembers_{endmember_file}.csv',
         "class",
         f"{frcov_img_path}_{endmember_file}",
         "--mode=sma",
@@ -295,7 +295,7 @@ im = Image.fromarray(rgb)
 im.save(frcov_ql_path)
 
 #Convert to COG
-temp_file =  f'{input_path}/work/temp_frcover.tif'
+temp_file =  f'{sister_frcov_dir}/work/temp_frcover.tif'
 out_file =  f"{output_stac_catalog_dir}/{frcov_basename}.tif"
 
 print(f"Creating COG {out_file}")
