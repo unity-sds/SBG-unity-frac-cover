@@ -27,15 +27,9 @@ RUN julia -e 'using Pkg; Pkg.activate("."); Pkg.add(path="https://github.com/kms
 RUN julia -e 'using Pkg; Pkg.activate("."); Pkg.precompile()'
 ENV JULIA_PROJECT="/app/SpectralUnmixing"
 
-# Get Fractional Cover
-WORKDIR /app
-RUN git clone https://github.com/unity-sds/SBG-unity-frac-cover.git
-WORKDIR /app/SBG-unity-frac-cover/outputs/SBG-L2-FRAC_COVER
-WORKDIR /app/SBG-unity-frac-cover/
 
-COPY data .
+COPY data data/.
 
-COPY SBG-L2A_CORFL .
+COPY process.py .
 
-
-CMD ["python", "process.py", "catalog.json", "/app/SBG-unity-frac-cover/outputs/SBG-L2-FRAC_COVER/", "1", "1.0", "none", "001", "True", "SBG-L2-Fractional-Cover"]
+#CMD ["python", "process.py", "catalog.json", "/app/SBG-unity-frac-cover/outputs/SBG-L2-FRAC_COVER/", "1", "1.0", "none", "001", "True", "SBG-L2-Fractional-Cover"]
