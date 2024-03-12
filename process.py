@@ -433,6 +433,9 @@ if file:
     dataset.add_data_file(DataFile("text/json", output_stac_catalog_dir + '/' +  name +'.json', ["metadata"]))
     dataset.add_property("Description", description)
 
+    for k in run_config["metadata"]["cover_percentile_counts"].keys():
+        dataset.add_property(k, run_config["metadata"]["cover_percentile_counts"][k])
+
 # Add the dataset to the collection
 out_collection._datasets.append(dataset)
 
