@@ -106,7 +106,7 @@ output_collection_name = sys.argv[8] #'SBG-L2-Fractional-Cover'
 # 
 # Load filenames from the stage_in STAC item collection file
 inp_collection = Collection.from_stac(input_stac_collection_file)
-data_filenames = inp_collection.data_locations()
+data_filenames = inp_collection.data_locations(["data"])
 
 print(f"Data Files (JSON): {data_filenames}")
 
