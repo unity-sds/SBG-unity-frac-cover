@@ -99,14 +99,14 @@ n_cores = sys.argv[3] #"1"
 refl_scale = sys.argv[4] #"1.0"
 normalization = sys.argv[5] #"none"
 crid = sys.argv[6] #"001"
-experimental_flag = sys.argv[7] #"True"
+experimental_flag = sys.argv[7].lower() == 'true' #sys.argv[7] #"True"
 output_collection_name = sys.argv[8] #'SBG-L2-Fractional-Cover'
 
 #temp work dir
 #optional variables
-temp_work_dir = "/unity/ads/temp/frcover"
+temp_work_dir = "/tmp/frcover"
 if not os.path.exists(temp_work_dir):
-    os.mkdir(temp_work_dir)
+    os.makedirs(temp_work_dir+"/work", exist_ok=True)
 
 # # Import Files from STAC Item Collection
 # 
@@ -119,6 +119,7 @@ print(f"Data Files (JSON): {data_filenames}")
 # Define paths and variables
 from pathlib import Path
 sister_frcov_dir = os.path.abspath(os.path.dirname(__file__))
+print(sister_frcov_dir)
 # Make work dir
 # if not os.path.exists(f"{sister_frcov_dir}/work"):
 #     print("Making work directory")
@@ -131,7 +132,7 @@ else:
 
 
 specun_dir = os.path.join(os.path.dirname(sister_frcov_dir), "SpectralUnmixing")
-
+print(f'Specun_dir: {specun_dir}')
 corfl_file_path = os.path.dirname(data_filenames[0])
 corfl_basename = Path(data_filenames[0]).stem
 frcov_basename = get_frcov_basename(corfl_basename, crid)
@@ -153,6 +154,7 @@ start_line = 1+np.argwhere(line_data != rfl.columns)[0][0]
 end_line = rfl.lines - np.argwhere(np.flip(line_data) != rfl.columns)[0][0] -1
 
 endmember_lib_path = f"{sister_frcov_dir}/data/veg_soil_water_snow_endmembers.csv"
+print(f'endmember: {endmember_lib_path} ')
 endmembers = pd.read_csv(endmember_lib_path)
 
 no_snow = endmembers[endmembers['class'] != 'snow']
@@ -205,7 +207,7 @@ else:
 
 for endmember_file in endmember_files:
     # Add required args
-    cmd = ["julia"]
+    cmd = [f'JULIA_PROJECT={specun_dir}', "julia"]
 
     # Add parallelization if n_cores > 1
     if int(n_cores) > 1:
@@ -227,7 +229,9 @@ for endmember_file in endmember_files:
         f"--refl_scale={refl_scale}"]
 
     print("Running unmix.jl command: " + " ".join(cmd))
-    subprocess.run(" ".join(cmd), shell=True)
+    import subprocess, os
+    my_env = os.environ.copy()
+    subprocess.run(" ".join(cmd), shell=True, env=my_env)
 
 ## Unity (BLEE): Modified due to lack of files:
 no_snow_frcov_file = f'{frcov_img_path}_no_snow_fractional_cover'
@@ -428,7 +432,7 @@ if file:
         if file.endswith(".bin"):
             dataset.add_data_file(DataFile("binary", file, ["data"]))
         elif file.endswith(".png"):
-            dataset.add_data_file(DataFile("image/png", file, ["data"]))
+            dataset.add_data_file(DataFile("image/png", file, ["browse"]))
         elif file.endswith(".tif"):
             dataset.add_data_file(DataFile("image/tif", file, ["data"]))
         elif file.endswith(".hdr"):
