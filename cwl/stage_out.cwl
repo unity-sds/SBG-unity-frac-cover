@@ -48,10 +48,10 @@ requirements:
       AWS_SESSION_TOKEN: $(inputs.aws_session_token)
       CATALOG_FILE: $(inputs.output_dir.path)/catalog.json
       COLLECTION_ID: $(inputs.collection_id)
-      LOG_LEVEL: '10'
+      LOG_LEVEL: '20'
       OUTPUT_DIRECTORY: $(runtime.outdir)
       OUTPUT_FILE: $(runtime.outdir)/stage-out-results.json
-      PARALLEL_COUNT: '2'
+      PARALLEL_COUNT: '-1'
       STAGING_BUCKET: $(inputs.staging_bucket)
   InitialWorkDirRequirement:
     listing:

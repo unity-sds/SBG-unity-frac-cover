@@ -29,13 +29,13 @@ $graph:
             - int
             refl_scale:
             - 'null'
-            -int
+            - int
             normalization:
             - 'null'
             - string
             experimental:
             - 'null'
-            - boolean
+            - string 
           type: record
       stage_in:
         type:
@@ -53,7 +53,9 @@ $graph:
             edl_username:
             - string
             - 'null'
-            stac_json: File
+            stac_json: 
+            - string
+            - File
           type: record
       stage_out:
         type:
@@ -77,24 +79,6 @@ $graph:
             - string
             - 'null'
           type: record
-      stage_aux_in:
-        type:
-          fields:
-            download_type: string
-            downloading_keys:
-            - string
-            - 'null'
-            edl_password:
-            - string
-            - 'null'
-            edl_password_type:
-            - string
-            - 'null'
-            edl_username:
-            - string
-            - 'null'
-            stac_json: File
-          type: record
     outputs:
       stage_out_results:
         outputSource: stage_out/stage_out_results
@@ -108,14 +92,13 @@ $graph:
 
     steps:
       process:
-          run: "#unity-fractional-cover"
+          run: "#sbg-unity-fractional-cover"
           in:
             #catalog_name: input_catalog_name
             crid:
               source: parameters
               valueFrom: $(self.crid)
             download_dir: stage_in/stage_in_download_dir
-            aux_dir: stage_aux_in/stage_in_download_dir
             output_collection: 
               source: parameters
               valueFrom: $(self.output_collection)
@@ -152,30 +135,12 @@ $graph:
           stac_json:
             source: stage_in
             valueFrom: $(self.stac_json)
-        out:
-        - stage_in_collection_file
-        - stage_in_download_dir
-        run: stage_in.cwl
-      stage_aux_in:
-        in:
-          download_type:
+          unity_client_id:
             source: stage_in
-            valueFrom: $(self.download_type)
-          downloading_keys:
+            valueFrom: $(self.unity_client_id)
+          unity_stac_auth:
             source: stage_in
-            valueFrom: $(self.downloading_keys)
-          edl_password:
-            source: stage_in
-            valueFrom: $(self.edl_password)
-          edl_password_type:
-            source: stage_in
-            valueFrom: $(self.edl_password_type)
-          edl_username:
-            source: stage_in
-            valueFrom: $(self.edl_username)
-          stac_json:
-            source: stage_aux_in
-            valueFrom: $(self.stac_json)
+            valueFrom: $(self.unity_stac_auth)    
         out:
         - stage_in_collection_file
         - stage_in_download_dir
@@ -210,8 +175,14 @@ $graph:
     cwlVersion: v1.2
     
     requirements:
+      - class: EnvVarRequirement
+        envDef:
+          JULIA_PROJECT: /app/SpectralUnmixing 
+          HOME: /root
+          PROJ_LIB: /opt/conda/share/proj
       - class: DockerRequirement
-        dockerPull: "leebrian0731/sbg-unity-fractional-cover:"
+        dockerPull: "gangl/sbg-unity-fractional-cover:539f43b"
+#leebrian0731/sbg-unity-fractional-cover"
     
     
     arguments:
@@ -221,6 +192,7 @@ $graph:
     - $(inputs.refl_scale)
     - $(inputs.normalization)
     - $(inputs.crid)
+    #- "False"
     - $(inputs.experimental)
     - $(inputs.output_collection)
     inputs:
@@ -245,10 +217,10 @@ $graph:
         default: 'none'
         type: string
       experimental:
-        default: True
-        type: boolean
-      
-
+        type: string
+        default: "false" 
+      output_collection:
+        type: string  
     
     outputs:
       process_output_dir:
@@ -256,4 +228,4 @@ $graph:
           glob: $(runtime.outdir)
         type: Directory
     
-    baseCommand: ["python", "process.py"]
+    baseCommand: ["python", "/app/SpectralUnmixing/process.py"]
