@@ -102,6 +102,12 @@ crid = sys.argv[6] #"001"
 experimental_flag = sys.argv[7] #"True"
 output_collection_name = sys.argv[8] #'SBG-L2-Fractional-Cover'
 
+#temp work dir
+#optional variables
+temp_work_dir = "/unity/ads/temp/frcover"
+if not os.path.exists(temp_work_dir):
+    os.mkdir(temp_work_dir)
+
 # # Import Files from STAC Item Collection
 # 
 # Load filenames from the stage_in STAC item collection file
@@ -114,9 +120,9 @@ print(f"Data Files (JSON): {data_filenames}")
 from pathlib import Path
 sister_frcov_dir = os.path.abspath(os.path.dirname(__file__))
 # Make work dir
-if not os.path.exists(f"{sister_frcov_dir}/work"):
-    print("Making work directory")
-    os.mkdir(f"{sister_frcov_dir}/work")
+# if not os.path.exists(f"{sister_frcov_dir}/work"):
+#     print("Making work directory")
+#     os.mkdir(f"{sister_frcov_dir}/work")
         
 if experimental_flag:
     disclaimer = "(DISCLAIMER: THIS DATA IS EXPERIMENTAL AND NOT INTENDED FOR SCIENTIFIC USE) "
@@ -129,9 +135,9 @@ specun_dir = os.path.join(os.path.dirname(sister_frcov_dir), "SpectralUnmixing")
 corfl_file_path = os.path.dirname(data_filenames[0])
 corfl_basename = Path(data_filenames[0]).stem
 frcov_basename = get_frcov_basename(corfl_basename, crid)
-corfl_img_path = f"{sister_frcov_dir}/work/{corfl_basename}"
-corfl_hdr_path = f"{sister_frcov_dir}/work/{corfl_basename}.hdr"
-frcov_img_path = f"{sister_frcov_dir}/work/{frcov_basename}"
+corfl_img_path = f"{temp_work_dir}/work/{corfl_basename}"
+corfl_hdr_path = f"{temp_work_dir}/work/{corfl_basename}.hdr"
+frcov_img_path = f"{temp_work_dir}/work/{frcov_basename}"
 
 # Copy the input files into the work directory (don't use .bin)
 shutil.copyfile(f"{corfl_file_path}/{corfl_basename}.bin", corfl_img_path)
@@ -150,10 +156,10 @@ endmember_lib_path = f"{sister_frcov_dir}/data/veg_soil_water_snow_endmembers.cs
 endmembers = pd.read_csv(endmember_lib_path)
 
 no_snow = endmembers[endmembers['class'] != 'snow']
-no_snow.to_csv(f'{sister_frcov_dir}/work/endmembers_no_snow.csv',index = False)
+no_snow.to_csv(f'{temp_work_dir}/work/endmembers_no_snow.csv',index = False)
 
 no_water = endmembers[endmembers['class'] != 'water']
-no_water.to_csv(f'{sister_frcov_dir}/work/endmembers_no_water.csv',index = False)
+no_water.to_csv(f'{temp_work_dir}/work/endmembers_no_water.csv',index = False)
 
 # Build command and run unmix.jl
 unmix_exe = f"{specun_dir}/unmix.jl"
@@ -208,7 +214,7 @@ for endmember_file in endmember_files:
     cmd += [
         unmix_exe,
         corfl_img_path,
-        f'{sister_frcov_dir}/work/endmembers_{endmember_file}.csv',
+        f'{temp_work_dir}/work/endmembers_{endmember_file}.csv',
         "class",
         f"{frcov_img_path}_{endmember_file}",
         "--mode=sma",
@@ -295,7 +301,7 @@ im = Image.fromarray(rgb)
 im.save(frcov_ql_path)
 
 #Convert to COG
-temp_file =  f'{sister_frcov_dir}/work/temp_frcover.tif'
+temp_file =  f'{temp_work_dir}/work/temp_frcover.tif'
 out_file =  f"{output_stac_catalog_dir}/{frcov_basename}.tif"
 
 print(f"Creating COG {out_file}")
